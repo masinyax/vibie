@@ -1,154 +1,292 @@
 import 'package:flutter/material.dart';
+import 'package:flutter/cupertino.dart'; // สำหรับ Year Picker แบบ iOS
 import 'package:google_fonts/google_fonts.dart';
+import 'login.dart';
+import 'mood_selection.dart';
+import 'insights_screen.dart';
 
-class LoginScreen extends StatelessWidget {
-  const LoginScreen({super.key});
+// ตัวแปรเก็บข้อมูลอารมณ์ (จำลอง Database)
+Map<String, List<String>> savedMoods = {}; 
 
-  void _showEmailSignIn(BuildContext context) {
-    showModalBottomSheet(
-      context: context,
-      isScrollControlled: true, // เพื่อให้ดันขึ้นตามคีย์บอร์ด
-      backgroundColor: const Color(0xFFFDFDFD),
-      shape: const RoundedRectangleBorder(
-        borderRadius: BorderRadius.vertical(top: Radius.circular(30)),
+void main() {
+  runApp(const VibieApp());
+}
+
+class VibieApp extends StatelessWidget {
+  const VibieApp({super.key});
+
+  @override
+  Widget build(BuildContext context) {
+    return MaterialApp(
+      debugShowCheckedModeBanner: false,
+      title: 'Vibie Mood',
+      theme: ThemeData(
+        useMaterial3: true,
+        textTheme: GoogleFonts.itimTextTheme(),
       ),
-      builder: (context) => Padding(
-        padding: EdgeInsets.only(
-          bottom: MediaQuery.of(context).viewInsets.bottom + 30,
-          left: 30, right: 30, top: 30,
-        ),
+      initialRoute: '/',
+      routes: {
+        '/': (context) => const LoginScreen(),
+        '/dashboard': (context) => const MainDashboard(),
+      },
+    );
+  }
+}
+
+class MainDashboard extends StatefulWidget {
+  const MainDashboard({super.key});
+
+  @override
+  State<MainDashboard> createState() => _MainDashboardState();
+}
+
+class _MainDashboardState extends State<MainDashboard> {
+  DateTime _focusedDate = DateTime.now();
+
+  final List<String> _months = [
+    'January', 'February', 'March', 'April', 'May', 'June',
+    'July', 'August', 'September', 'October', 'November', 'December'
+  ];
+
+  int _getDaysInMonth(int year, int month) {
+    return DateTime(year, month + 1, 0).day;
+  }
+
+  // --- ฟังก์ชันเลือกปี (แบบวงล้อสีดำ มินิมอล) ---
+  void _showYearPicker() {
+    int currentYearBE = DateTime.now().year + 543;
+    int startYearBE = currentYearBE - 100;
+    List<int> years = List.generate(101, (index) => startYearBE + index);
+
+    showCupertinoModalPopup(
+      context: context,
+      builder: (context) => Container(
+        height: 300,
+        color: const Color(0xFFF5F5F2),
         child: Column(
-          mainAxisSize: MainAxisSize.min,
-          crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            Text('Welcome back!', style: GoogleFonts.itim(fontSize: 28, fontWeight: FontWeight.bold)),
-            Text('Enter your email to continue with Vibie.', style: GoogleFonts.itim(color: Colors.black45)),
-            const SizedBox(height: 25),
-            
-            // ช่องกรอก Email (รองรับ Autofill)
-            TextField(
-              autofillHints: const [AutofillHints.email], // เปิดระบบ Autofill ของเครื่อง
-              keyboardType: TextInputType.emailAddress,
-              decoration: InputDecoration(
-                hintText: 'example@email.com',
-                prefixIcon: const Icon(Icons.alternate_email, size: 20),
-                filled: true,
-                fillColor: Colors.black.withOpacity(0.04),
-                border: OutlineInputBorder(borderRadius: BorderRadius.circular(18), borderSide: BorderSide.none),
+            Container(
+              height: 55,
+              decoration: const BoxDecoration(
+                color: Colors.white,
+                border: Border(bottom: BorderSide(color: Colors.black12, width: 0.5)),
+              ),
+              child: Row(
+                children: [
+                  CupertinoButton(
+                    child: Text('Cancel', style: GoogleFonts.itim(color: Colors.black54)),
+                    onPressed: () => Navigator.pop(context),
+                  ),
+                  Expanded(
+                    child: Center(
+                      child: Text('Select Year', 
+                        style: GoogleFonts.itim(color: Colors.black, fontWeight: FontWeight.bold, fontSize: 18)),
+                    ),
+                  ),
+                  CupertinoButton(
+                    child: Text('Done', style: GoogleFonts.itim(color: Colors.black, fontWeight: FontWeight.bold)),
+                    onPressed: () => Navigator.pop(context),
+                  ),
+                ],
               ),
             ),
-            const SizedBox(height: 20),
-            
-            // ปุ่มยืนยัน
-            _buildLoginButton(
-              onPressed: () => Navigator.pushReplacementNamed(context, '/dashboard'),
-              iconWidget: const Icon(Icons.arrow_forward_rounded, color: Colors.black87),
-              label: 'Next',
-              color: const Color(0xFFFFB7B2),
+            Expanded(
+              child: CupertinoPicker(
+                backgroundColor: const Color(0xFFF5F5F2),
+                itemExtent: 45,
+                scrollController: FixedExtentScrollController(
+                  initialItem: years.indexOf(_focusedDate.year + 543),
+                ),
+                onSelectedItemChanged: (index) {
+                  setState(() {
+                    _focusedDate = DateTime(years[index] - 543, _focusedDate.month);
+                  });
+                },
+                children: years.map((y) => Center(
+                  child: Text('$y BE', style: GoogleFonts.itim(fontSize: 22, color: Colors.black)),
+                )).toList(),
+              ),
             ),
           ],
         ),
       ),
+    );
+  }
+
+  // --- ฟังก์ชันเลือกเดือน ---
+  void _showMonthPicker() {
+    showModalBottomSheet(
+      context: context,
+      backgroundColor: Colors.white,
+      shape: const RoundedRectangleBorder(borderRadius: BorderRadius.vertical(top: Radius.circular(25))),
+      builder: (context) {
+        return Container(
+          height: 350,
+          padding: const EdgeInsets.all(20),
+          child: Column(
+            children: [
+              Text('Select Month', style: GoogleFonts.itim(fontSize: 22, fontWeight: FontWeight.bold)),
+              const Divider(),
+              Expanded(
+                child: GridView.builder(
+                  gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(crossAxisCount: 3, childAspectRatio: 2),
+                  itemCount: 12,
+                  itemBuilder: (context, index) {
+                    return TextButton(
+                      onPressed: () {
+                        setState(() {
+                          _focusedDate = DateTime(_focusedDate.year, index + 1);
+                        });
+                        Navigator.pop(context);
+                      },
+                      child: Text(_months[index],
+                        style: GoogleFonts.itim(
+                          color: _focusedDate.month == index + 1 ? Colors.blue : Colors.black87,
+                          fontWeight: _focusedDate.month == index + 1 ? FontWeight.bold : FontWeight.normal,
+                        ),
+                      ),
+                    );
+                  },
+                ),
+              ),
+            ],
+          ),
+        );
+      },
     );
   }
 
   @override
   Widget build(BuildContext context) {
+    int daysInMonth = _getDaysInMonth(_focusedDate.year, _focusedDate.month);
+    String monthName = _months[_focusedDate.month - 1];
+    int yearBE = _focusedDate.year + 543;
+
     return Scaffold(
-      backgroundColor: const Color(0xFFFDFDFD), // พื้นหลังขาวนวล
-      body: SafeArea(
-        child: Padding(
-          padding: const EdgeInsets.all(30.0),
-          child: Column(
-            mainAxisAlignment: MainAxisAlignment.center,
-            children: [
-              const Spacer(),
-              
-              Container(
-                child: Image.asset('assets/images/mood1.png', // ใช้รูปอารมณ์ที่มีความสุขที่สุดมาโชว์
-                width: 150,
-                height: 150,
+      body: Stack(
+        children: [
+          // 1. แบคกราวด์รูป home.png (จางๆ แบบ Mooda)
+          Positioned.fill(
+            child: Opacity(
+              opacity: 0.15, 
+              child: Image.asset(
+                'assets/images/home.png', 
+                fit: BoxFit.cover,
               ),
-              ),
-              const SizedBox(height: 30),
-              
-              // 2. ชื่อแอปและคำโปรย
-              Text(
-                'Vibie',
-                style: GoogleFonts.itim(
-                  fontSize: 48,
-                  fontWeight: FontWeight.bold,
-                  color: const Color(0xFF3D3D4E),
-                ),
-              ),
-              Text(
-                'Your little space for big feelings.',
-                textAlign: TextAlign.center,
-                style: TextStyle(fontSize: 16, color: Colors.black45),
-              ),
-              const Spacer(),
-
-              // 3. ปุ่ม Login ด้วย Email
-              _buildLoginButton(
-                onPressed: () => _showEmailSignIn(context),
-                iconWidget: const Icon(Icons.mail_outline_rounded, color: Colors.black87),
-                label: 'Continue with Email',
-                color: const Color(0xFFFFB7B2), // ชมพูพาสเทล
-              ),
-              const SizedBox(height: 15),
-
-              // 4. ปุ่ม Login ด้วย Google (โชว์ความโปร)
-              _buildLoginButton(
-                onPressed: () {
-                  Navigator.pushReplacementNamed(context, '/dashboard');
-                },
-                iconWidget: Image.asset('assets/images/google.png',
-                width: 16,
-                height: 16,
-                ),
-                label: 'Continue with Google',
-                color: Colors.white,
-                isBordered: true,
-              ),
-              
-              const SizedBox(height: 30),
-            ],
+            ),
           ),
-        ),
+
+          // 2. เนื้อหา Dashboard
+          SafeArea(
+            child: Column(
+              children: [
+                const SizedBox(height: 20),
+                
+                // ชื่อแอปตัวใหญ่เด่นกลางหน้าจอ
+                Text(
+                  'Vibie',
+                  style: GoogleFonts.itim(
+                    fontSize: 56,
+                    fontWeight: FontWeight.bold,
+                    color: const Color(0xFF3D3D4E),
+                    letterSpacing: -1.0,
+                  ),
+                ),
+                
+                const SizedBox(height: 5),
+
+                // เดือนและปี (กดเพื่อเปลี่ยน)
+                Row(
+                  mainAxisAlignment: MainAxisAlignment.center,
+                  children: [
+                    GestureDetector(
+                      onTap: _showMonthPicker,
+                      child: Text(
+                        '$monthName  ',
+                        style: GoogleFonts.itim(fontSize: 22, fontWeight: FontWeight.bold, color: Colors.black87),
+                      ),
+                    ),
+                    GestureDetector(
+                      onTap: _showYearPicker,
+                      child: Text(
+                        '$yearBE BE',
+                        style: GoogleFonts.itim(fontSize: 16, color: Colors.black38, fontWeight: FontWeight.bold),
+                      ),
+                    ),
+                  ],
+                ),
+
+                const SizedBox(height: 30),
+
+                // หัวตาราง SUN - SAT
+                Padding(
+                  padding: const EdgeInsets.symmetric(horizontal: 20),
+                  child: Row(
+                    mainAxisAlignment: MainAxisAlignment.spaceAround,
+                    children: ['SUN', 'MON', 'TUE', 'WED', 'THU', 'FRI', 'SAT']
+                        .map((day) => Text(day, style: GoogleFonts.itim(fontSize: 10, color: Colors.black38)))
+                        .toList(),
+                  ),
+                ),
+
+                // ตารางปฏิทิน
+                Expanded(
+                  child: Padding(
+                    padding: const EdgeInsets.all(20.0),
+                    child: GridView.builder(
+                      gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(
+                        crossAxisCount: 7,
+                        mainAxisSpacing: 20,
+                        crossAxisSpacing: 10,
+                      ),
+                      itemCount: daysInMonth,
+                      itemBuilder: (context, index) {
+                        int day = index + 1;
+                        String dateKey = "$yearBE-${_focusedDate.month}-$day";
+
+                        if (savedMoods.containsKey(dateKey)) {
+                          return Column(
+                            children: [
+                              Expanded(child: Image.asset(savedMoods[dateKey]![0])),
+                              const SizedBox(height: 2),
+                              Text('$day', style: const TextStyle(fontSize: 10, decoration: TextDecoration.underline)),
+                            ],
+                          );
+                        }
+                        return Center(
+                          child: Text('$day', style: GoogleFonts.itim(color: Colors.black87)),
+                        );
+                      },
+                    ),
+                  ),
+                ),
+              ],
+            ),
+          ),
+          
+          // ปุ่มเมนูและไอคอนกราฟ
+          Positioned(
+            top: MediaQuery.of(context).padding.top + 10,
+            left: 20,
+            child: const Icon(Icons.menu, color: Colors.black87),
+          ),
+          Positioned(
+            top: MediaQuery.of(context).padding.top,
+            right: 10,
+            child: IconButton(
+              icon: const Icon(Icons.bar_chart_rounded, color: Colors.black87),
+              onPressed: () => Navigator.push(context, MaterialPageRoute(builder: (context) => const InsightsScreen())),
+            ),
+          ),
+        ],
       ),
-    );
-  }
-
-  // Widget ช่วยสร้างปุ่ม Login
-  Widget _buildLoginButton({
-    required VoidCallback onPressed,
-    required Widget iconWidget,
-    required String label,
-    required Color color,
-    bool isBordered = false,
-  }) {
-    return SizedBox(
-      width: double.infinity,
-      height: 55,
-      child: ElevatedButton(
-        onPressed: onPressed,
-        style: ElevatedButton.styleFrom(
-          backgroundColor: color,
-          foregroundColor: Colors.black87,
-          elevation: 0,
-          shape: RoundedRectangleBorder(
-            borderRadius: BorderRadius.circular(15),
-            side: isBordered ? const BorderSide(color: Colors.black12) : BorderSide.none,
-          ),
-        ),
-        child: Row(
-          mainAxisAlignment: MainAxisAlignment.center,
-          children: [
-            iconWidget,
-            const SizedBox(width: 10),
-            Text(label, style: const TextStyle(fontSize: 16, fontWeight: FontWeight.bold)),
-          ],
-        ),
+      floatingActionButton: FloatingActionButton(
+        onPressed: () {
+          Navigator.push(context, MaterialPageRoute(builder: (context) => const MoodSelectionScreen()))
+              .then((value) => setState(() {}));
+        },
+        backgroundColor: const Color(0xFF3D3D4E),
+        child: const Icon(Icons.add, color: Colors.white, size: 30),
       ),
     );
   }
