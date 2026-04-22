@@ -1,0 +1,47 @@
+{
+  "project_info": {
+    "project_number": "767478164407",
+    "project_id": "moodapp-e5799",
+    "storage_bucket": "moodapp-e5799.firebasestorage.app"
+  },
+  "client": [
+    {
+      "client_info": {
+        "mobilesdk_app_id": "1:767478164407:android:7b052e5ef5f28bc7c81632",
+        "android_client_info": {
+          "package_name": "com.mooda"
+        }
+      },
+      "oauth_client": [
+        {
+          "client_id": "767478164407-89l82aa3u16vfuirqv983ag6i3mh4i08.apps.googleusercontent.com",
+          "client_type": 1,
+          "android_info": {
+            "package_name": "com.mooda",
+            "certificate_hash": "f8353a9bd1ee202e0284be627491b8d71d460b5a"
+          }
+        },
+        {
+          "client_id": "767478164407-usnv6hj9qp9g2dttlvb3t778peam822p.apps.googleusercontent.com",
+          "client_type": 3
+        }
+      ],
+      "api_key": [
+        {
+          "current_key": "AIzaSyAsm0X7rsX8Ly8DlFAYvOMVGp_FY_-6f1k"
+        }
+      ],
+      "services": {
+        "appinvite_service": {
+          "other_platform_oauth_client": [
+            {
+              "client_id": "767478164407-usnv6hj9qp9g2dttlvb3t778peam822p.apps.googleusercontent.com",
+              "client_type": 3
+            }
+          ]
+        }
+      }
+    }
+  ],
+  "configuration_version": "1"
+}

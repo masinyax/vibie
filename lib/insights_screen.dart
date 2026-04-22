@@ -1,30 +1,37 @@
+import 'package:cloud_firestore/cloud_firestore.dart';
+import 'package:firebase_auth/firebase_auth.dart';
 import 'package:flutter/material.dart';
 import 'package:google_fonts/google_fonts.dart';
-import 'main.dart'; // สำคัญ: ต้อง import เพื่อให้เห็น savedMoods
 
 class InsightsScreen extends StatelessWidget {
   const InsightsScreen({super.key});
 
-  Map<String, double> _calculateStats() {
-    if (savedMoods.isEmpty) return {};
-    
-    Map<String, int> counts = {};
-    int total = 0;
+  Map<String, double> _calculateStats(QuerySnapshot<Map<String, dynamic>> snapshot) {
+    final counts = <String, int>{};
+    var total = 0;
 
-    savedMoods.forEach((date, paths) {
-      for (var path in paths) {
+    for (final doc in snapshot.docs) {
+      final data = doc.data();
+      final paths = (data['moodImagePaths'] as List<dynamic>? ?? [])
+          .whereType<String>()
+          .toList();
+
+      for (final path in paths) {
         counts[path] = (counts[path] ?? 0) + 1;
         total++;
       }
-    });
+    }
 
-    return counts.map((path, count) => MapEntry(path, (count / total) * 100));
+    if (total == 0) {
+      return {};
+    }
+
+    return counts.map((path, moodCount) => MapEntry(path, (moodCount / total) * 100));
   }
 
   @override
   Widget build(BuildContext context) {
-    // เรียกใช้ฟังก์ชันคำนวณ
-    final stats = _calculateStats();
+    final user = FirebaseAuth.instance.currentUser;
 
     return Scaffold(
       backgroundColor: const Color(0xFFFDFDFD),
@@ -41,25 +48,54 @@ class InsightsScreen extends StatelessWidget {
         ),
         centerTitle: true,
       ),
-      body: savedMoods.isEmpty 
-        ? _buildEmptyState() // ถ้าไม่มีข้อมูล ให้โชว์หน้าว่างที่ออกแบบไว้
-        : _buildInsightContent(stats), // ถ้ามีข้อมูล ค่อยโชว์กราฟวิเคราะห์
+      body: user == null
+          ? _buildEmptyState(
+              title: 'Please sign in first',
+              subtitle: 'Insights needs authenticated user data.',
+            )
+          : StreamBuilder<QuerySnapshot<Map<String, dynamic>>>(
+              stream: FirebaseFirestore.instance
+                  .collection('users')
+                  .doc(user.uid)
+                  .collection('moods')
+                  .snapshots(),
+              builder: (context, snapshot) {
+                if (snapshot.hasError) {
+                  return _buildEmptyState(
+                    title: 'ไม่สามารถโหลดข้อมูลได้ตอนนี้',
+                    subtitle: 'ลองใหม่อีกครั้งในภายหลัง',
+                  );
+                }
+
+                if (!snapshot.hasData) {
+                  return const Center(child: CircularProgressIndicator());
+                }
+
+                final stats = _calculateStats(snapshot.data!);
+                return stats.isEmpty
+                    ? _buildEmptyState(
+                        title: 'ยังไม่มีข้อมูลการวิเคราะห์ในขณะนี้',
+                        subtitle: 'ลองบันทึกอารมณ์วันแรกของคุณดูนะ!',
+                      )
+                    : _buildInsightContent(stats);
+              },
+            ),
     );
   }
 
-  Widget _buildEmptyState() {
+  Widget _buildEmptyState({required String title, required String subtitle}) {
     return Center(
       child: Column(
         mainAxisAlignment: MainAxisAlignment.center,
         children: [
-          Icon(Icons.analytics_outlined, size: 80, color: Colors.black12),
+          const Icon(Icons.analytics_outlined, size: 80, color: Colors.black12),
           const SizedBox(height: 20),
           Text(
-            'ยังไม่มีข้อมูลการวิเคราะห์ในขณะนี้',
+            title,
             style: GoogleFonts.itim(fontSize: 18, color: Colors.black45),
           ),
           Text(
-            'ลองบันทึกอารมณ์วันแรกของคุณดูนะ!',
+            subtitle,
             style: GoogleFonts.itim(fontSize: 14, color: Colors.black26),
           ),
         ],
@@ -67,19 +103,21 @@ class InsightsScreen extends StatelessWidget {
     );
   }
 
-  // --- ส่วนหน้าตาตอนที่มีข้อมูลแล้ว ---
   Widget _buildInsightContent(Map<String, double> stats) {
     return SingleChildScrollView(
       padding: const EdgeInsets.all(25.0),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          Text('Monthly Summary', style: GoogleFonts.itim(fontSize: 18, color: Colors.black54)),
+          Text(
+            'Monthly Summary',
+            style: GoogleFonts.itim(fontSize: 18, color: Colors.black54),
+          ),
           const SizedBox(height: 15),
           Container(
             padding: const EdgeInsets.all(20),
             decoration: BoxDecoration(
-              color: const Color(0xFFFFB7B2).withOpacity(0.2),
+              color: const Color(0xFFFFB7B2).withValues(alpha: 0.2),
               borderRadius: BorderRadius.circular(25),
             ),
             child: Row(
@@ -90,7 +128,13 @@ class InsightsScreen extends StatelessWidget {
                   child: Column(
                     crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
-                      Text('Vibie AI Insights', style: GoogleFonts.itim(fontSize: 18, fontWeight: FontWeight.bold)),
+                      Text(
+                        'Vibie AI Insights',
+                        style: GoogleFonts.itim(
+                          fontSize: 18,
+                          fontWeight: FontWeight.bold,
+                        ),
+                      ),
                       const Text('AI กำลังวิเคราะห์รูปแบบอารมณ์ของคุณ...'),
                     ],
                   ),
@@ -99,13 +143,21 @@ class InsightsScreen extends StatelessWidget {
             ),
           ),
           const SizedBox(height: 40),
-          Text('Mood Frequency', style: GoogleFonts.itim(fontSize: 18, color: Colors.black54)),
+          Text(
+            'Mood Frequency',
+            style: GoogleFonts.itim(fontSize: 18, color: Colors.black54),
+          ),
           const SizedBox(height: 25),
           ...stats.entries.map((entry) {
-            // ดึงชื่ออารมณ์จากชื่อไฟล์
-            String label = entry.key.split('/').last.split('.').first.replaceAll('mood', 'Mood ');
-            return _buildMoodBar(label, entry.value, const Color(0xFFFFB7B2), entry.key);
-          }).toList(),
+            String label =
+                entry.key.split('/').last.split('.').first.replaceAll('mood', 'Mood ');
+            return _buildMoodBar(
+              label,
+              entry.value,
+              const Color(0xFFFFB7B2),
+              entry.key,
+            );
+          }),
         ],
       ),
     );
@@ -126,13 +178,16 @@ class InsightsScreen extends StatelessWidget {
                   mainAxisAlignment: MainAxisAlignment.spaceBetween,
                   children: [
                     Text(label, style: const TextStyle(fontWeight: FontWeight.bold)),
-                    Text('${percentage.toInt()}%', style: const TextStyle(color: Colors.black38, fontSize: 12)),
+                    Text(
+                      '${percentage.toInt()}%',
+                      style: const TextStyle(color: Colors.black38, fontSize: 12),
+                    ),
                   ],
                 ),
                 const SizedBox(height: 5),
                 LinearProgressIndicator(
                   value: percentage / 100,
-                  backgroundColor: Colors.black.withOpacity(0.05),
+                  backgroundColor: Colors.black.withValues(alpha: 0.05),
                   color: color,
                   minHeight: 10,
                 ),
