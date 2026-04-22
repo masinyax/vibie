@@ -1,122 +1,273 @@
 import 'package:flutter/material.dart';
+import 'package:flutter/cupertino.dart'; // เพิ่มอันนี้เพื่อใช้ Picker แบบ iOS
+import 'package:google_fonts/google_fonts.dart';
+import 'login.dart';
+import 'mood_selection.dart';
+import 'insights_screen.dart';
+
+Map<String, List<String>> savedMoods = {};
 
 void main() {
-  runApp(const MyApp());
+  runApp(const VibieApp());
 }
 
-class MyApp extends StatelessWidget {
-  const MyApp({super.key});
+class VibieApp extends StatelessWidget {
+  const VibieApp({super.key});
 
-  // This widget is the root of your application.
   @override
   Widget build(BuildContext context) {
     return MaterialApp(
-      title: 'Flutter Demo',
+      debugShowCheckedModeBanner: false,
+      title: 'Vibie Mood',
       theme: ThemeData(
-        // This is the theme of your application.
-        //
-        // TRY THIS: Try running your application with "flutter run". You'll see
-        // the application has a purple toolbar. Then, without quitting the app,
-        // try changing the seedColor in the colorScheme below to Colors.green
-        // and then invoke "hot reload" (save your changes or press the "hot
-        // reload" button in a Flutter-supported IDE, or press "r" if you used
-        // the command line to start the app).
-        //
-        // Notice that the counter didn't reset back to zero; the application
-        // state is not lost during the reload. To reset the state, use hot
-        // restart instead.
-        //
-        // This works for code too, not just values: Most code changes can be
-        // tested with just a hot reload.
-        colorScheme: ColorScheme.fromSeed(seedColor: Colors.deepPurple),
+        useMaterial3: true,
+        textTheme: GoogleFonts.itimTextTheme(),
       ),
-      home: const MyHomePage(title: 'Flutter Demo Home Page'),
+      initialRoute: '/',
+      routes: {
+        '/': (context) => const LoginScreen(),
+        '/dashboard': (context) => const MainDashboard(),
+      },
     );
   }
 }
 
-class MyHomePage extends StatefulWidget {
-  const MyHomePage({super.key, required this.title});
-
-  // This widget is the home page of your application. It is stateful, meaning
-  // that it has a State object (defined below) that contains fields that affect
-  // how it looks.
-
-  // This class is the configuration for the state. It holds the values (in this
-  // case the title) provided by the parent (in this case the App widget) and
-  // used by the build method of the State. Fields in a Widget subclass are
-  // always marked "final".
-
-  final String title;
+class MainDashboard extends StatefulWidget {
+  const MainDashboard({super.key});
 
   @override
-  State<MyHomePage> createState() => _MyHomePageState();
+  State<MainDashboard> createState() => _MainDashboardState();
 }
 
-class _MyHomePageState extends State<MyHomePage> {
-  int _counter = 0;
+class _MainDashboardState extends State<MainDashboard> {
+  DateTime _focusedDate = DateTime.now();
 
-  void _incrementCounter() {
-    setState(() {
-      // This call to setState tells the Flutter framework that something has
-      // changed in this State, which causes it to rerun the build method below
-      // so that the display can reflect the updated values. If we changed
-      // _counter without calling setState(), then the build method would not be
-      // called again, and so nothing would appear to happen.
-      _counter++;
-    });
+  final List<String> _months = [
+    'January', 'February', 'March', 'April', 'May', 'June',
+    'July', 'August', 'September', 'October', 'November', 'December'
+  ];
+
+  int _getDaysInMonth(int year, int month) {
+    return DateTime(year, month + 1, 0).day;
+  }
+
+  void _showYearPicker() {
+  int currentYearBE = DateTime.now().year + 543;
+  int startYearBE = currentYearBE - 100;
+  List<int> years = List.generate(101, (index) => startYearBE + index);
+
+  showCupertinoModalPopup(
+    context: context,
+    builder: (context) => Container(
+      height: 300,
+      color: const Color(0xFFF5F5F2),
+      child: Column(
+        children: [
+          // --- แถบ Header (แก้ไข Layout ตรงนี้) ---
+          Container(
+            height: 55, // กำหนดความสูงที่แน่นอน
+            decoration: const BoxDecoration(
+              color: Colors.white,
+              border: Border(bottom: BorderSide(color: Colors.black12, width: 0.5)),
+            ),
+            child: Row(
+              children: [
+                // ปุ่ม Cancel (ชิดซ้าย)
+                CupertinoButton(
+                  padding: const EdgeInsets.symmetric(horizontal: 15),
+                  child: Text('Cancel', style: GoogleFonts.itim(color: Colors.black54, fontSize: 16)),
+                  onPressed: () => Navigator.pop(context),
+                ),
+                
+                // หัวข้อ (อยู่ตรงกลางเป๊ะๆ ไม่เบียดใคร)
+                Expanded(
+                  child: Center(
+                    child: Text(
+                      'Select Year',
+                      style: GoogleFonts.itim(
+                        color: Colors.black, // เปลี่ยนกลับเป็นสีดำตามคำขอ
+                        fontWeight: FontWeight.bold,
+                        fontSize: 18,
+                      ),
+                    ),
+                  ),
+                ),
+                
+                // ปุ่ม Done (ชิดขวา)
+                CupertinoButton(
+                  padding: const EdgeInsets.symmetric(horizontal: 15),
+                  child: Text('Done', style: GoogleFonts.itim(color: Colors.black, fontWeight: FontWeight.bold, fontSize: 16)),
+                  onPressed: () => Navigator.pop(context),
+                ),
+              ],
+            ),
+          ),
+          
+          // --- ตัววงล้อเลือกปี ---
+          Expanded(
+            child: CupertinoPicker(
+              backgroundColor: const Color(0xFFF5F5F2),
+              itemExtent: 45,
+              scrollController: FixedExtentScrollController(
+                initialItem: years.length - 1,
+              ),
+              onSelectedItemChanged: (index) {
+                setState(() {
+                  _focusedDate = DateTime(years[index] - 543, _focusedDate.month);
+                });
+              },
+              children: years.map((y) => Center(
+                child: Text(
+                  '$y BE', 
+                  style: GoogleFonts.itim(fontSize: 22, color: Colors.black),
+                ),
+              )).toList(),
+            ),
+          ),
+        ],
+      ),
+    ),
+  );
+}
+
+  void _showMonthPicker() {
+    showModalBottomSheet(
+      context: context,
+      backgroundColor: Colors.white,
+      shape: const RoundedRectangleBorder(borderRadius: BorderRadius.vertical(top: Radius.circular(25))),
+      builder: (context) {
+        return Container(
+          height: 350,
+          padding: const EdgeInsets.all(20),
+          child: Column(
+            children: [
+              Text('Select Month', style: GoogleFonts.itim(fontSize: 22, fontWeight: FontWeight.bold)),
+              const Divider(),
+              Expanded(
+                child: GridView.builder(
+                  gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(crossAxisCount: 3, childAspectRatio: 2),
+                  itemCount: 12,
+                  itemBuilder: (context, index) {
+                    return TextButton(
+                      onPressed: () {
+                        setState(() {
+                          _focusedDate = DateTime(_focusedDate.year, index + 1);
+                        });
+                        Navigator.pop(context);
+                      },
+                      child: Text(_months[index],
+                        style: GoogleFonts.itim(
+                          color: _focusedDate.month == index + 1 ? Colors.blue : Colors.black87,
+                          fontWeight: _focusedDate.month == index + 1 ? FontWeight.bold : FontWeight.normal,
+                        ),
+                      ),
+                    );
+                  },
+                ),
+              ),
+            ],
+          ),
+        );
+      },
+    );
   }
 
   @override
   Widget build(BuildContext context) {
-    // This method is rerun every time setState is called, for instance as done
-    // by the _incrementCounter method above.
-    //
-    // The Flutter framework has been optimized to make rerunning build methods
-    // fast, so that you can just rebuild anything that needs updating rather
-    // than having to individually change instances of widgets.
+    int daysInMonth = _getDaysInMonth(_focusedDate.year, _focusedDate.month);
+    String monthName = _months[_focusedDate.month - 1];
+    int yearBE = _focusedDate.year + 543;
+
     return Scaffold(
+      backgroundColor: const Color(0xFFFDFDFD),
       appBar: AppBar(
-        // TRY THIS: Try changing the color here to a specific color (to
-        // Colors.amber, perhaps?) and trigger a hot reload to see the AppBar
-        // change color while the other colors stay the same.
-        backgroundColor: Theme.of(context).colorScheme.inversePrimary,
-        // Here we take the value from the MyHomePage object that was created by
-        // the App.build method, and use it to set our appbar title.
-        title: Text(widget.title),
+        backgroundColor: Colors.transparent,
+        elevation: 0,
+        leading: const Icon(Icons.menu, color: Colors.black87),
+        title: Text('Vibie', style: GoogleFonts.itim(fontWeight: FontWeight.bold)),
+        centerTitle: true,
+        actions: [
+          IconButton(
+            icon: const Icon(Icons.bar_chart_rounded, color: Colors.black87),
+            onPressed: () => Navigator.push(context, MaterialPageRoute(builder: (context) => const InsightsScreen())),
+          ),
+        ],
       ),
-      body: Center(
-        // Center is a layout widget. It takes a single child and positions it
-        // in the middle of the parent.
-        child: Column(
-          // Column is also a layout widget. It takes a list of children and
-          // arranges them vertically. By default, it sizes itself to fit its
-          // children horizontally, and tries to be as tall as its parent.
-          //
-          // Column has various properties to control how it sizes itself and
-          // how it positions its children. Here we use mainAxisAlignment to
-          // center the children vertically; the main axis here is the vertical
-          // axis because Columns are vertical (the cross axis would be
-          // horizontal).
-          //
-          // TRY THIS: Invoke "debug painting" (choose the "Toggle Debug Paint"
-          // action in the IDE, or press "p" in the console), to see the
-          // wireframe for each widget.
-          mainAxisAlignment: MainAxisAlignment.center,
-          children: <Widget>[
-            const Text('You have pushed the button this many times:'),
-            Text(
-              '$_counter',
-              style: Theme.of(context).textTheme.headlineMedium,
+      body: Column(
+        children: [
+          const SizedBox(height: 10),
+          // แก้ไขตรงนี้: แยกปีออกมาให้กดได้
+          GestureDetector(
+            onTap: _showYearPicker,
+            child: Text('$yearBE BE', style: GoogleFonts.itim(fontSize: 16, color: Colors.grey.shade600, fontWeight: FontWeight.bold)),
+          ),
+          GestureDetector(
+            onTap: _showMonthPicker,
+            child: Text(
+              monthName,
+              style: GoogleFonts.itim(
+                fontSize: 32,
+                fontWeight: FontWeight.bold,
+                decoration: TextDecoration.underline,
+                decorationColor: Colors.blue.withOpacity(0.3),
+                decorationThickness: 4,
+              ),
             ),
-          ],
-        ),
+          ),
+          const SizedBox(height: 30),
+
+          Padding(
+            padding: const EdgeInsets.symmetric(horizontal: 20),
+            child: Row(
+              mainAxisAlignment: MainAxisAlignment.spaceAround,
+              children: ['SUN', 'MON', 'TUE', 'WED', 'THU', 'FRI', 'SAT']
+                  .map((day) => Text(day, style: const TextStyle(fontSize: 10, color: Colors.black38)))
+                  .toList(),
+            ),
+          ),
+
+          Expanded(
+            child: Padding(
+              padding: const EdgeInsets.all(20.0),
+              child: GridView.builder(
+                gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(
+                  crossAxisCount: 7,
+                  mainAxisSpacing: 20,
+                  crossAxisSpacing: 10,
+                ),
+                itemCount: daysInMonth,
+                itemBuilder: (context, index) {
+                  int day = index + 1;
+                  String dateKey = "$yearBE-${_focusedDate.month}-$day";
+
+                  // ตรวจสอบว่ามีข้อมูลอารมณ์ในวันนี้ไหม
+                  if (savedMoods.containsKey(dateKey)) {
+                    return Column(
+                      children: [
+                        Expanded(child: Image.asset(savedMoods[dateKey]![0])),
+                        const SizedBox(height: 2),
+                        Text('$day', style: const TextStyle(fontSize: 10, decoration: TextDecoration.underline)),
+                      ],
+                    );
+                  }
+                  return Center(
+                    child: Text('$day', style: GoogleFonts.itim(color: Colors.black87)),
+                  );
+                },
+              ),
+            ),
+          ),
+        ],
       ),
       floatingActionButton: FloatingActionButton(
-        onPressed: _incrementCounter,
-        tooltip: 'Increment',
-        child: const Icon(Icons.add),
-      ), // This trailing comma makes auto-formatting nicer for build methods.
+        onPressed: () {
+          // เมื่อกลับมาจากหน้าบันทึก ให้สั่ง setState เพื่ออัปเดตรูปบนปฏิทิน
+          Navigator.push(context, MaterialPageRoute(builder: (context) => const MoodSelectionScreen()))
+              .then((value) => setState(() {}));
+        },
+        backgroundColor: const Color(0xFF3D3D4E),
+        child: const Icon(Icons.add, color: Colors.white, size: 30),
+      ),
     );
   }
 }
