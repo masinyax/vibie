@@ -58,8 +58,6 @@ class _MoodSelectionScreenState extends State<MoodSelectionScreen> {
                       .map((i) => moods[i]['label']!)
                       .join(', ');
 
-                  print("Sending paths: $paths"); // เช็คใน Console ว่าค่ามาไหม
-
                   Navigator.push(
                     context,
                     MaterialPageRoute(
@@ -113,14 +111,14 @@ class _MoodSelectionScreenState extends State<MoodSelectionScreen> {
                 border: Border.all(
                   // ขอบสีฟ้าอ่อนเมื่อถูกเลือก
                   color: isSelected
-                      ? Colors.blue.withOpacity(0.4)
-                      : Colors.black.withOpacity(0.05),
+                      ? Colors.blue.withValues(alpha: 0.4)
+                      : Colors.black.withValues(alpha: 0.05),
                   width: isSelected ? 2 : 1,
                 ),
                 boxShadow: isSelected
                     ? [
                         BoxShadow(
-                          color: Colors.blue.withOpacity(0.1),
+                          color: Colors.blue.withValues(alpha: 0.1),
                           blurRadius: 10,
                           offset: const Offset(0, 5),
                         ),
