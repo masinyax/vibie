@@ -25,7 +25,7 @@ class VibieApp extends StatelessWidget {
       ),
       initialRoute: '/',
       routes: {
-        '/': (context) => const LoginScreen(),
+        '/': (context) => LoginScreen(),
         '/dashboard': (context) => const MainDashboard(),
       },
     );
