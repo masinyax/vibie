@@ -6,15 +6,6 @@ import 'package:google_sign_in/google_sign_in.dart';
 class LoginScreen extends StatefulWidget {
   const LoginScreen({super.key});
 
-  // --- Logic สำหรับ Google Sign-In ---
-  Future<void> _handleGoogleSignIn(BuildContext context) async {
-    try {
-      Navigator.pushReplacementNamed(context, '/dashboard');
-    } catch (error) {
-      debugPrint("Login Error: $error");
-    }
-  }
-
   @override
   State<LoginScreen> createState() => _LoginScreenState();
 }
@@ -22,6 +13,7 @@ class LoginScreen extends StatefulWidget {
 class _LoginScreenState extends State<LoginScreen> {
   bool _isLoading = false;
 
+  // --- Logic: Email Sign-in ---
   Future<void> _continueWithEmail(String email, String password) async {
     if (email.trim().isEmpty || password.trim().isEmpty) {
       _showMessage('Please enter email and password');
@@ -34,32 +26,22 @@ class _LoginScreenState extends State<LoginScreen> {
         email: email.trim(),
         password: password.trim(),
       );
+      if (mounted) Navigator.pushReplacementNamed(context, '/dashboard');
     } on FirebaseAuthException catch (e) {
-      if (e.code == 'user-not-found') {
-        await FirebaseAuth.instance.createUserWithEmailAndPassword(
-          email: email.trim(),
-          password: password.trim(),
-        );
+      if (e.code == 'user-not-found' || e.code == 'invalid-credential') {
+        // ถ้าหาไม่เจอ ให้ลองสร้างบัญชีใหม่ (หรือแจ้งเตือนตามเหมาะสม)
+        _showMessage('User not found or invalid credentials');
       } else {
         _showMessage(e.message ?? 'Email sign-in failed');
-        return;
       }
-    } catch (_) {
-      _showMessage('Email sign-in failed');
-      return;
+    } catch (e) {
+      _showMessage('Error: $e');
     } finally {
-      if (mounted) {
-        setState(() => _isLoading = false);
-      }
+      if (mounted) setState(() => _isLoading = false);
     }
-
-    if (!mounted) {
-      return;
-    }
-
-    Navigator.pushReplacementNamed(context, '/dashboard');
   }
 
+  // --- Logic: Google Sign-in ---
   Future<void> _continueWithGoogle() async {
     setState(() => _isLoading = true);
     try {
@@ -67,6 +49,7 @@ class _LoginScreenState extends State<LoginScreen> {
       await googleSignIn.signOut();
       final googleUser = await googleSignIn.signIn();
       if (googleUser == null) {
+        setState(() => _isLoading = false);
         return;
       }
 
@@ -77,30 +60,17 @@ class _LoginScreenState extends State<LoginScreen> {
       );
 
       await FirebaseAuth.instance.signInWithCredential(credential);
-
-      if (!mounted) {
-        return;
-      }
-      Navigator.pushReplacementNamed(context, '/dashboard');
-    } on FirebaseAuthException catch (e) {
-      _showMessage(e.message ?? 'Google sign-in failed');
+      if (mounted) Navigator.pushReplacementNamed(context, '/dashboard');
     } catch (e) {
       _showMessage('Google sign-in failed: $e');
     } finally {
-      if (mounted) {
-        setState(() => _isLoading = false);
-      }
+      if (mounted) setState(() => _isLoading = false);
     }
   }
 
   void _showMessage(String message) {
-    if (!mounted) {
-      return;
-    }
-
-    ScaffoldMessenger.of(context)
-      ..hideCurrentSnackBar()
-      ..showSnackBar(SnackBar(content: Text(message)));
+    if (!mounted) return;
+    ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text(message)));
   }
 
   void _showEmailSignIn(BuildContext context) {
@@ -117,36 +87,24 @@ class _LoginScreenState extends State<LoginScreen> {
       builder: (context) => Padding(
         padding: EdgeInsets.only(
           bottom: MediaQuery.of(context).viewInsets.bottom + 30,
-          left: 30,
-          right: 30,
-          top: 30,
+          left: 30, right: 30, top: 30,
         ),
         child: Column(
           mainAxisSize: MainAxisSize.min,
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            Text(
-              'Welcome back!',
-              style: GoogleFonts.itim(fontSize: 28, fontWeight: FontWeight.bold),
-            ),
-            Text(
-              'Enter your email to continue with Vibie.',
-              style: GoogleFonts.itim(color: Colors.black45),
-            ),
+            Text('Welcome back!', style: GoogleFonts.itim(fontSize: 28, fontWeight: FontWeight.bold)),
+            Text('Enter your email to continue with Vibie.', style: GoogleFonts.itim(color: Colors.black45)),
             const SizedBox(height: 25),
             TextField(
               controller: emailController,
-              autofillHints: const [AutofillHints.email],
               keyboardType: TextInputType.emailAddress,
               decoration: InputDecoration(
                 hintText: 'example@email.com',
-                prefixIcon: const Icon(Icons.alternate_email, size: 20),
+                prefixIcon: const Icon(Icons.alternate_email),
                 filled: true,
-                fillColor: Colors.black.withValues(alpha: 0.04),
-                border: OutlineInputBorder(
-                  borderRadius: BorderRadius.circular(18),
-                  borderSide: BorderSide.none,
-                ),
+                fillColor: Colors.black.withOpacity(0.04),
+                border: OutlineInputBorder(borderRadius: BorderRadius.circular(18), borderSide: BorderSide.none),
               ),
             ),
             const SizedBox(height: 12),
@@ -155,30 +113,19 @@ class _LoginScreenState extends State<LoginScreen> {
               obscureText: true,
               decoration: InputDecoration(
                 hintText: 'Password',
-                prefixIcon: const Icon(Icons.lock_outline, size: 20),
+                prefixIcon: const Icon(Icons.lock_outline),
                 filled: true,
-                fillColor: Colors.black.withValues(alpha: 0.04),
-                border: OutlineInputBorder(
-                  borderRadius: BorderRadius.circular(18),
-                  borderSide: BorderSide.none,
-                ),
+                fillColor: Colors.black.withOpacity(0.04),
+                border: OutlineInputBorder(borderRadius: BorderRadius.circular(18), borderSide: BorderSide.none),
               ),
             ),
             const SizedBox(height: 20),
             _buildLoginButton(
-              onPressed: _isLoading
-                  ? null
-                  : () async {
-                      Navigator.pop(context);
-                      await _continueWithEmail(
-                        emailController.text,
-                        passwordController.text,
-                      );
-                    },
-              iconWidget: const Icon(
-                Icons.arrow_forward_rounded,
-                color: Colors.black87,
-              ),
+              onPressed: () {
+                Navigator.pop(context);
+                _continueWithEmail(emailController.text, passwordController.text);
+              },
+              iconWidget: const Icon(Icons.arrow_forward_rounded),
               label: 'Next',
               color: const Color(0xFFFFB7B2),
             ),
@@ -193,14 +140,11 @@ class _LoginScreenState extends State<LoginScreen> {
     return Scaffold(
       body: Stack(
         children: [
-          // 1. ✨ ส่วนแบคกราวด์รูป home.png (เหล่าตัวการ์ตูน)
+          // 1. แบคกราวด์สีสดชัด (Opacity 1.0 ตามที่ Masinya ต้องการ)
           Positioned.fill(
-            child: Opacity(
-              opacity: 0.5, // ปรับความจางเพื่อให้ปุ่มและชื่อแอปยังอ่านง่าย
-              child: Image.asset(
-                'assets/images/home.png', // รูป Emotions Back To School ที่คุณตั้งชื่อใหม่
-                fit: BoxFit.cover,
-              ),
+            child: Image.asset(
+              'assets/images/home.png',
+              fit: BoxFit.cover,
             ),
           ),
 
@@ -211,12 +155,11 @@ class _LoginScreenState extends State<LoginScreen> {
               child: Column(
                 children: [
                   const Spacer(flex: 2),
-                  
-                  // 3. ✨ ชื่อแอป Vibie ตัวใหญ่ๆ แบบ Mooda
+                  // ชื่อแอปตัวใหญ่สะใจแบบ Mooda
                   Text(
                     'Vibie',
                     style: GoogleFonts.itim(
-                      fontSize: 80, // ใหญ่สะใจแบบ Mooda เลยครับ
+                      fontSize: 80,
                       fontWeight: FontWeight.bold,
                       color: const Color(0xFF3D3D4E),
                       letterSpacing: -2.0,
@@ -225,107 +168,38 @@ class _LoginScreenState extends State<LoginScreen> {
                   Text(
                     'Your little space for big feelings.',
                     textAlign: TextAlign.center,
-                    style: GoogleFonts.itim(
-                      fontSize: 18, 
-                      color: Colors.black54,
-                    ),
+                    style: GoogleFonts.itim(fontSize: 18, color: Colors.black54),
                   ),
-                  
                   const Spacer(flex: 3),
 
-                  // 4. ปุ่ม Login
-                  _buildLoginButton(
-                    onPressed: () => _showEmailSignIn(context),
-                    iconWidget: const Icon(Icons.mail_outline_rounded, color: Colors.black87),
-                    label: 'Continue with Email',
-                    color: const Color(0xFFFFB7B2),
-                  ),
-                  const SizedBox(height: 15),
-                  _buildLoginButton(
-                    onPressed: () => _handleGoogleSignIn(context),
-                    iconWidget: Image.asset(
-                      'assets/images/google.png', 
-                      width: 22, 
-                      height: 22,
-                    ),
-                    label: 'Continue with Google',
-                    color: Colors.white,
-                    isBordered: true,
-                  ),
-                  
-                  const SizedBox(height: 40),
-                  
-                  Text(
-                    'By continuing, you are agreeing to create an account.',
-                    style: GoogleFonts.itim(fontSize: 12, color: Colors.black26),
-                  ),
-                ],
-              ),
-            ),
-          ),
-        ],
-      backgroundColor: const Color(0xFFFDFDFD),
-      body: SafeArea(
-        child: Stack(
-          children: [
-            Padding(
-              padding: const EdgeInsets.all(30.0),
-              child: Column(
-                mainAxisAlignment: MainAxisAlignment.center,
-                children: [
-                  const Spacer(),
-                  Image.asset(
-                    'assets/images/mood1.png',
-                    width: 150,
-                    height: 150,
-                  ),
-                  const SizedBox(height: 30),
-                  Text(
-                    'Vibie',
-                    style: GoogleFonts.itim(
-                      fontSize: 48,
-                      fontWeight: FontWeight.bold,
-                      color: const Color(0xFF3D3D4E),
-                    ),
-                  ),
-                  const Text(
-                    'Your little space for big feelings.',
-                    textAlign: TextAlign.center,
-                    style: TextStyle(fontSize: 16, color: Colors.black45),
-                  ),
-                  const Spacer(),
+                  // 3. ปุ่มกดต่างๆ
                   _buildLoginButton(
                     onPressed: _isLoading ? null : () => _showEmailSignIn(context),
-                    iconWidget: const Icon(
-                      Icons.mail_outline_rounded,
-                      color: Colors.black87,
-                    ),
+                    iconWidget: const Icon(Icons.mail_outline_rounded),
                     label: 'Continue with Email',
                     color: const Color(0xFFFFB7B2),
                   ),
                   const SizedBox(height: 15),
                   _buildLoginButton(
                     onPressed: _isLoading ? null : _continueWithGoogle,
-                    iconWidget: Image.asset(
-                      'assets/images/google.png',
-                      width: 16,
-                      height: 16,
-                    ),
+                    iconWidget: Image.asset('assets/images/google.png', width: 22, height: 22),
                     label: 'Continue with Google',
                     color: Colors.white,
                     isBordered: true,
                   ),
-                  const SizedBox(height: 30),
+                  const SizedBox(height: 40),
                 ],
               ),
             ),
-            if (_isLoading)
-              const ColoredBox(
-                color: Color(0x66000000),
-                child: Center(child: CircularProgressIndicator()),
-              ),
-          ],
-        ),
+          ),
+
+          // แสดง Loading ตอนกำลังหมุน
+          if (_isLoading)
+            Container(
+              color: Colors.black26,
+              child: const Center(child: CircularProgressIndicator(color: Color(0xFFFFB7B2))),
+            ),
+        ],
       ),
     );
   }
@@ -349,10 +223,6 @@ class _LoginScreenState extends State<LoginScreen> {
           shape: RoundedRectangleBorder(
             borderRadius: BorderRadius.circular(20),
             side: isBordered ? const BorderSide(color: Colors.black12) : BorderSide.none,
-            borderRadius: BorderRadius.circular(15),
-            side: isBordered
-                ? const BorderSide(color: Colors.black12)
-                : BorderSide.none,
           ),
         ),
         child: Row(
@@ -361,11 +231,6 @@ class _LoginScreenState extends State<LoginScreen> {
             iconWidget,
             const SizedBox(width: 12),
             Text(label, style: GoogleFonts.itim(fontSize: 18, fontWeight: FontWeight.bold)),
-            const SizedBox(width: 10),
-            Text(
-              label,
-              style: const TextStyle(fontSize: 16, fontWeight: FontWeight.bold),
-            ),
           ],
         ),
       ),
