@@ -42,7 +42,7 @@ class LoginScreen extends StatelessWidget {
             // ปุ่มยืนยัน
             _buildLoginButton(
               onPressed: () => Navigator.pushReplacementNamed(context, '/dashboard'),
-              icon: Icons.arrow_forward_rounded,
+              iconWidget: const Icon(Icons.arrow_forward_rounded, color: Colors.black87),
               label: 'Next',
               color: const Color(0xFFFFB7B2),
             ),
@@ -91,7 +91,7 @@ class LoginScreen extends StatelessWidget {
               // 3. ปุ่ม Login ด้วย Email
               _buildLoginButton(
                 onPressed: () => _showEmailSignIn(context),
-                icon: Icons.email_outlined,
+                iconWidget: const Icon(Icons.mail_outline_rounded, color: Colors.black87),
                 label: 'Continue with Email',
                 color: const Color(0xFFFFB7B2), // ชมพูพาสเทล
               ),
@@ -102,7 +102,10 @@ class LoginScreen extends StatelessWidget {
                 onPressed: () {
                   Navigator.pushReplacementNamed(context, '/dashboard');
                 },
-                icon: Icons.g_mobiledata,
+                iconWidget: Image.asset('assets/images/google.png',
+                width: 16,
+                height: 16,
+                ),
                 label: 'Continue with Google',
                 color: Colors.white,
                 isBordered: true,
@@ -119,7 +122,7 @@ class LoginScreen extends StatelessWidget {
   // Widget ช่วยสร้างปุ่ม Login
   Widget _buildLoginButton({
     required VoidCallback onPressed,
-    required IconData icon,
+    required Widget iconWidget,
     required String label,
     required Color color,
     bool isBordered = false,
@@ -141,7 +144,7 @@ class LoginScreen extends StatelessWidget {
         child: Row(
           mainAxisAlignment: MainAxisAlignment.center,
           children: [
-            Icon(icon, size: 24),
+            iconWidget,
             const SizedBox(width: 10),
             Text(label, style: const TextStyle(fontSize: 16, fontWeight: FontWeight.bold)),
           ],
