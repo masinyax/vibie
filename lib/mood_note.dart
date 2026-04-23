@@ -1,5 +1,4 @@
 import 'dart:io';
-
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:firebase_storage/firebase_storage.dart';
@@ -11,11 +10,23 @@ import 'package:permission_handler/permission_handler.dart';
 class MoodNoteScreen extends StatefulWidget {
   final List<String> moodImagePaths;
   final String moodLabel;
+  final String? docId;
+  final String? existingNote;
+  final String? existingFont;
+  final double? existingFontSize;
+  final String? existingTextAlign;
+  final DateTime? selectedDate;
 
   const MoodNoteScreen({
     super.key,
     required this.moodImagePaths,
     required this.moodLabel,
+    this.docId,
+    this.existingNote,
+    this.existingFont,
+    this.existingFontSize,
+    this.existingTextAlign,
+    this.selectedDate,
   });
 
   @override
@@ -32,6 +43,44 @@ class _MoodNoteScreenState extends State<MoodNoteScreen> {
   final ImagePicker _picker = ImagePicker();
   List<XFile> _selectedImages = [];
 
+  // ✨ เพิ่มตัวแปรสำหรับจัดการการเปลี่ยนอารมณ์แบบ Real-time
+  late List<String> _currentPaths;
+  late String _currentLabel;
+
+  // ✨ รายการอารมณ์ทั้งหมดในแอป Vibie
+  final List<Map<String, String>> _allMoods = [
+    {'img': 'assets/images/mood1.png', 'label': 'Crying'},
+    {'img': 'assets/images/mood2.png', 'label': 'Happy'},
+    {'img': 'assets/images/mood3.png', 'label': 'Super Angry'},
+    {'img': 'assets/images/mood4.png', 'label': 'Tired'},
+    {'img': 'assets/images/mood5.png', 'label': 'Not Pleased'},
+    {'img': 'assets/images/mood6.png', 'label': 'Excited'},
+    {'img': 'assets/images/mood7.png', 'label': 'Sad'},
+    {'img': 'assets/images/mood8.png', 'label': 'Calm'},
+    {'img': 'assets/images/mood9.png', 'label': 'Sleepy'},
+    {'img': 'assets/images/mood10.png', 'label': 'Disappointed'},
+    {'img': 'assets/images/mood11.png', 'label': 'Confused'},
+  ];
+
+  @override
+  void initState() {
+    super.initState();
+    // ✨ กำหนดค่าเริ่มต้นจากที่รับมาจากหน้าก่อน หรือหน้าปฏิทิน
+    _currentPaths = List<String>.from(widget.moodImagePaths);
+    _currentLabel = widget.moodLabel;
+
+    if (widget.existingNote != null)
+      _noteController.text = widget.existingNote!;
+    if (widget.existingFont != null) _selectedFont = widget.existingFont!;
+    if (widget.existingFontSize != null) _fontSize = widget.existingFontSize!;
+    if (widget.existingTextAlign != null) {
+      _currentTextAlign = TextAlign.values.firstWhere(
+        (e) => e.name == widget.existingTextAlign,
+        orElse: () => TextAlign.left,
+      );
+    }
+  }
+
   @override
   void dispose() {
     _noteController.dispose();
@@ -45,12 +94,109 @@ class _MoodNoteScreenState extends State<MoodNoteScreen> {
       case 'Mali':
         return GoogleFonts.mali(fontSize: _fontSize, color: Colors.black87);
       case 'Chakra Petch':
-        return GoogleFonts.chakraPetch(fontSize: _fontSize, color: Colors.black87);
+        return GoogleFonts.chakraPetch(
+          fontSize: _fontSize,
+          color: Colors.black87,
+        );
       case 'Sriracha':
         return GoogleFonts.sriracha(fontSize: _fontSize, color: Colors.black87);
       default:
         return GoogleFonts.itim(fontSize: _fontSize, color: Colors.black87);
     }
+  }
+
+  Future<void> _requestPhotoPermission() async {
+    PermissionStatus status;
+
+    if (Platform.isAndroid) {
+      status = await Permission.photos.request();
+
+      if (status.isDenied || status.isPermanentlyDenied) {
+        status = await Permission.storage.request();
+      }
+    } else {
+      status = await Permission.photos.request();
+    }
+
+    if (status.isGranted || status.isLimited) {
+      final images = await _picker.pickMultiImage();
+      if (images.isNotEmpty) {
+        setState(() => _selectedImages = images);
+      }
+    } else if (status.isPermanentlyDenied) {
+      await openAppSettings();
+    } else {
+      // ถ้าแค่ปฏิเสธเฉยๆ ก็บอกน้อง Vibie นิดนึง
+      _showMessage('Vibie เข้าถึงรูปภาพไม่ได้ค่ะ');
+    }
+  }
+
+  Future<void> _saveMoodEntry() async {
+    final user = FirebaseAuth.instance.currentUser;
+    if (user == null) return;
+
+    setState(() => _isSaving = true);
+    try {
+      final moodCollection = FirebaseFirestore.instance
+          .collection('users')
+          .doc(user.uid)
+          .collection('moods');
+      // ✨ กำหนดวันที่บันทึก: ถ้าส่ง selectedDate มาให้ใช้อันนั้น ถ้าไม่มีให้ใช้ "วันนี้"
+      final DateTime saveDate = widget.selectedDate ?? DateTime.now();
+
+      // ✨ บังคับให้เป็นเวลา 00:00:00 เพื่อความแม่นยำของปฏิทิน
+      final DateTime midnightDate = DateTime(
+        saveDate.year,
+        saveDate.month,
+        saveDate.day,
+      );
+      final String dateStr =
+          "${midnightDate.year}-${midnightDate.month.toString().padLeft(2, '0')}-${midnightDate.day.toString().padLeft(2, '0')}";
+
+      final Map<String, dynamic> data = {
+        'note': _noteController.text.trim(),
+        'font': _selectedFont.toString(),
+        'fontSize': _fontSize,
+        'textAlign': _currentTextAlign.name,
+        'updatedAt': FieldValue.serverTimestamp(),
+        'moodLabel': _currentLabel.toString(),
+        'moodImagePaths': _currentPaths.map((e) => e.toString()).toList(),
+        'entryDate': Timestamp.fromDate(
+          midnightDate,
+        ), // ✨ ใช้ค่าวันที่ที่เลือกมา
+        'date': dateStr, // ✨ ใช้ค่าวันที่ที่เลือกมา
+      };
+
+      // ✨ 2. เรื่องรูปภาพที่เลือกจากเครื่อง (ถ้ามี)
+      // ถ้า Masinya ยังไม่ได้ทำระบบ Upload ขึ้น Storage ให้ข้ามตรงนี้ไปก่อน
+      // แต่ถ้ามีข้อมูลใน _selectedImages เราจะยังไม่ส่งมันลง Firestore ตรงๆ
+      List<String> photoUrls = [];
+      // (ที่นี่ควรมี Logic การ Upload ไฟล์รูปขึ้น Firebase Storage แล้วเอา URL กลับมาเก็บ)
+      data['photoUrls'] = photoUrls;
+
+      if (widget.docId != null) {
+        await moodCollection.doc(widget.docId).update(data);
+      } else {
+        data.addAll({'createdAt': FieldValue.serverTimestamp()});
+        await moodCollection.doc().set(data);
+      }
+
+      if (!mounted) return;
+      Navigator.of(context).popUntil((route) => route.isFirst);
+      _showMessage('Vibie saved your memory');
+    } catch (e) {
+      print("Save Error: $e");
+      _showMessage('Something went wrong!');
+    } finally {
+      if (mounted) setState(() => _isSaving = false);
+    }
+  }
+
+  void _showMessage(String message) {
+    if (!mounted) return;
+    ScaffoldMessenger.of(
+      context,
+    ).showSnackBar(SnackBar(content: Text(message, style: GoogleFonts.itim())));
   }
 
   void _showTextSettings() {
@@ -71,8 +217,10 @@ class _MoodNoteScreenState extends State<MoodNoteScreen> {
                 children: [
                   Text(
                     'Text Settings',
-                    style:
-                        GoogleFonts.itim(fontSize: 22, fontWeight: FontWeight.bold),
+                    style: GoogleFonts.itim(
+                      fontSize: 22,
+                      fontWeight: FontWeight.bold,
+                    ),
                   ),
                   const SizedBox(height: 10),
                   Row(
@@ -103,7 +251,10 @@ class _MoodNoteScreenState extends State<MoodNoteScreen> {
                   const SizedBox(height: 10),
                   Text(
                     'Font Style',
-                    style: GoogleFonts.itim(fontSize: 16, color: Colors.black54),
+                    style: GoogleFonts.itim(
+                      fontSize: 16,
+                      color: Colors.black54,
+                    ),
                   ),
                   const SizedBox(height: 15),
                   Expanded(
@@ -111,7 +262,11 @@ class _MoodNoteScreenState extends State<MoodNoteScreen> {
                       scrollDirection: Axis.horizontal,
                       children: [
                         _fontOption('Itim', GoogleFonts.itim(), setModalState),
-                        _fontOption('Kanit', GoogleFonts.kanit(), setModalState),
+                        _fontOption(
+                          'Kanit',
+                          GoogleFonts.kanit(),
+                          setModalState,
+                        ),
                         _fontOption('Mali', GoogleFonts.mali(), setModalState),
                         _fontOption(
                           'Chakra Petch',
@@ -149,7 +304,7 @@ class _MoodNoteScreenState extends State<MoodNoteScreen> {
           color: isSelected ? Colors.black87 : Colors.white,
           borderRadius: BorderRadius.circular(15),
           boxShadow: [
-            BoxShadow(color: Colors.black.withValues(alpha: 0.05), blurRadius: 5),
+            BoxShadow(color: Colors.black.withOpacity(0.05), blurRadius: 5),
           ],
         ),
         child: Center(
@@ -165,93 +320,18 @@ class _MoodNoteScreenState extends State<MoodNoteScreen> {
     );
   }
 
-  Future<void> _requestPhotoPermission() async {
-    final photosStatus = await Permission.photos.request();
-    final storageStatus = await Permission.storage.request();
-
-    if (photosStatus.isGranted || storageStatus.isGranted) {
-      final images = await _picker.pickMultiImage();
-      if (images.isNotEmpty) {
-        setState(() {
-          _selectedImages = images;
-        });
-      }
-      return;
-    }
-
-    if (photosStatus.isPermanentlyDenied || storageStatus.isPermanentlyDenied) {
-      await openAppSettings();
-    }
-  }
-
-  Future<void> _saveMoodEntry() async {
-    final user = FirebaseAuth.instance.currentUser;
-    if (user == null) {
-      _showMessage('Please sign in before saving');
-      return;
-    }
-
-    setState(() => _isSaving = true);
-    try {
-      final now = DateTime.now();
-      final entryDate = DateTime(now.year, now.month, now.day);
-
-      final moodDoc = FirebaseFirestore.instance
-          .collection('users')
-          .doc(user.uid)
-          .collection('moods')
-          .doc();
-
-      final uploadedUrls = <String>[];
-      for (final image in _selectedImages) {
-        final ref = FirebaseStorage.instance.ref().child(
-          'users/${user.uid}/mood_images/${moodDoc.id}/${DateTime.now().millisecondsSinceEpoch}_${image.name}',
-        );
-
-        await ref.putFile(File(image.path));
-        uploadedUrls.add(await ref.getDownloadURL());
-      }
-
-      await moodDoc.set({
-        'entryDate': Timestamp.fromDate(entryDate),
-        'moodLabel': widget.moodLabel,
-        'moodImagePaths': widget.moodImagePaths,
-        'note': _noteController.text.trim(),
-        'photoUrls': uploadedUrls,
-        'font': _selectedFont,
-        'fontSize': _fontSize,
-        'textAlign': _currentTextAlign.name,
-        'createdAt': FieldValue.serverTimestamp(),
-        'updatedAt': FieldValue.serverTimestamp(),
-      });
-
-      if (!mounted) {
-        return;
-      }
-
-      Navigator.of(context).popUntil((route) => route.isFirst);
-      _showMessage('Saved to Firebase successfully');
-    } catch (_) {
-      _showMessage('Save failed. Please check Firebase setup.');
-    } finally {
-      if (mounted) {
-        setState(() => _isSaving = false);
-      }
-    }
-  }
-
-  void _showMessage(String message) {
-    if (!mounted) {
-      return;
-    }
-
-    ScaffoldMessenger.of(context)
-      ..hideCurrentSnackBar()
-      ..showSnackBar(SnackBar(content: Text(message)));
-  }
-
   @override
   Widget build(BuildContext context) {
+    final displayDate = widget.selectedDate ?? DateTime.now();
+    final List<String> weekDays = [
+      'Monday',
+      'Tuesday',
+      'Wednesday',
+      'Thursday',
+      'Friday',
+      'Saturday',
+      'Sunday',
+    ];
     return Scaffold(
       backgroundColor: const Color(0xFFF5F5F2),
       appBar: AppBar(
@@ -262,13 +342,13 @@ class _MoodNoteScreenState extends State<MoodNoteScreen> {
           onPressed: () => Navigator.pop(context),
         ),
         title: Text(
-          'April 21, 2026',
-          style: GoogleFonts.itim(fontSize: 18, color: Colors.black54),
+          widget.docId != null ? 'Edit Memory' : 'New Memory',
+          style: GoogleFonts.itim(color: Colors.black54),
         ),
         centerTitle: true,
         actions: [
           IconButton(
-            icon: const Icon(Icons.check, color: Colors.black, size: 28),
+            icon: const Icon(Icons.check, color: Color(0xFFFFB7B2), size: 32),
             onPressed: _isSaving ? null : _saveMoodEntry,
           ),
           const SizedBox(width: 15),
@@ -277,7 +357,7 @@ class _MoodNoteScreenState extends State<MoodNoteScreen> {
       body: Stack(
         children: [
           SingleChildScrollView(
-            padding: const EdgeInsets.symmetric(horizontal: 25.0),
+            padding: const EdgeInsets.all(25),
             child: Column(
               children: [
                 const SizedBox(height: 20),
@@ -286,98 +366,134 @@ class _MoodNoteScreenState extends State<MoodNoteScreen> {
                     Column(
                       crossAxisAlignment: CrossAxisAlignment.start,
                       children: [
-                        Text(
-                          '21',
-                          style: GoogleFonts.itim(
-                            fontSize: 40,
-                            fontWeight: FontWeight.bold,
-                            decoration: TextDecoration.underline,
-                            decorationThickness: 2,
-                          ),
+                        Column(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
+                            Text('${displayDate.day}', style: GoogleFonts.itim(fontSize: 45, fontWeight: FontWeight.bold, decoration: TextDecoration.underline, decorationColor: const Color(0xFFFFB7B2).withOpacity(0.5), decorationThickness: 4)),
+                            Text(weekDays[displayDate.weekday - 1], style: GoogleFonts.itim(fontSize: 18, color: Colors.black45)),
+                          ],
                         ),
-                        Text('Tuesday', style: GoogleFonts.itim(fontSize: 16)),
                       ],
                     ),
                   ],
                 ),
-                const SizedBox(height: 40),
+                const SizedBox(height: 30),
+                // ✨ แก้ไขส่วนแสดงไอคอนให้ "กดวนเปลี่ยนอารมณ์" ได้
+                // ✨ แก้ไขส่วนแสดงไอคอนให้เปลี่ยนอารมณ์ได้ "ทุกตัว" ที่เลือกมา
                 Wrap(
-                  spacing: 10,
-                  runSpacing: 10,
+                  spacing: 12,
+                  runSpacing: 12,
                   alignment: WrapAlignment.center,
-                  children: widget.moodImagePaths.map((path) {
-                    return Image.asset(
-                      path,
-                      width: 70,
-                      height: 70,
-                      fit: BoxFit.contain,
-                      errorBuilder: (context, error, stackTrace) =>
-                          const Icon(Icons.broken_image, color: Colors.red, size: 40),
+                  children: List.generate(_currentPaths.length, (index) {
+                    final path = _currentPaths[index];
+                    return GestureDetector(
+                      onTap: () {
+                        setState(() {
+                          // ค้นหาลำดับปัจจุบันใน List อารมณ์ทั้งหมด
+                          int allMoodsIndex = _allMoods.indexWhere(
+                            (m) => m['img'] == path,
+                          );
+                          // วนไปลำดับถัดไป
+                          int nextIndex =
+                              (allMoodsIndex + 1) % _allMoods.length;
+
+                          // ✨ เปลี่ยนเฉพาะตัวที่เราจิ้ม (ใช้ index แทนการ fix ที่ [0])
+                          _currentPaths[index] = _allMoods[nextIndex]['img']!;
+
+                          // อัปเดต Label (ถ้ามีอารมณ์เดียวให้โชว์ชื่ออารมณ์ ถ้าหลายอันให้โชว์ Mixed)
+                          if (_currentPaths.length == 1) {
+                            _currentLabel = _allMoods[nextIndex]['label']!;
+                          } else {
+                            _currentLabel = "Mixed Moods";
+                          }
+                        });
+                      },
+                      child: AnimatedSwitcher(
+                        duration: const Duration(milliseconds: 300),
+                        child: Image.asset(
+                          path,
+                          key: ValueKey(path), // สำคัญเพื่อให้ลื่นไหล
+                          width: 90,
+                          height: 90,
+                          fit: BoxFit.contain,
+                        ),
+                      ),
                     );
-                  }).toList(),
+                  }),
                 ),
-                if (_selectedImages.isNotEmpty)
-                  Padding(
-                    padding: const EdgeInsets.symmetric(vertical: 20),
-                    child: Wrap(
-                      spacing: 8,
-                      children: _selectedImages
-                          .map(
-                            (file) => ClipRRect(
-                              borderRadius: BorderRadius.circular(10),
-                              child: Image.file(
-                                File(file.path),
-                                width: 100,
-                                height: 100,
-                                fit: BoxFit.cover,
-                              ),
-                            ),
-                          )
-                          .toList(),
-                    ),
-                  ),
-                const SizedBox(height: 20),
+                const SizedBox(height: 15),
+                // ✨ แสดงชื่ออารมณ์ที่เปลี่ยนตามการกด
                 Container(
-                  padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 4),
+                  padding: const EdgeInsets.symmetric(
+                    horizontal: 16,
+                    vertical: 6,
+                  ),
                   decoration: BoxDecoration(
-                    color: Colors.blue.withValues(alpha: 0.15),
-                    borderRadius: BorderRadius.circular(8),
+                    color: const Color(0xFFFFB7B2).withOpacity(0.2),
+                    borderRadius: BorderRadius.circular(12),
                   ),
                   child: Text(
-                    widget.moodLabel,
+                    _currentLabel,
                     style: GoogleFonts.itim(
-                      fontSize: 26,
+                      fontSize: 22,
                       fontWeight: FontWeight.bold,
-                      color: Colors.black87,
+                      color: const Color(0xFF3D3D4E),
                     ),
                   ),
                 ),
-                const SizedBox(height: 30),
+                const SizedBox(height: 25),
                 TextField(
                   controller: _noteController,
                   textAlign: _currentTextAlign,
                   maxLines: null,
-                  keyboardType: TextInputType.multiline,
                   style: _getDynamicTextStyle(),
                   decoration: const InputDecoration(
-                    hintText: 'วันนี้เป็นยังไงบ้าง... บอก Vibie หน่อยนะ',
-                    hintStyle: TextStyle(color: Colors.black26),
+                    hintText: 'บอก Vibie หน่อยนะ...',
                     border: InputBorder.none,
                   ),
                 ),
+                // แสดงรูปที่เลือกจากเครื่อง (ถ้ามี)
+                if (_selectedImages.isNotEmpty)
+                  Padding(
+                    padding: const EdgeInsets.only(top: 20, bottom: 40),
+                    child: GridView.builder(
+                      shrinkWrap: true,
+                      physics: const NeverScrollableScrollPhysics(),
+                      gridDelegate:
+                          const SliverGridDelegateWithFixedCrossAxisCount(
+                            crossAxisCount: 3,
+                            crossAxisSpacing: 8,
+                            mainAxisSpacing: 8,
+                          ),
+                      itemCount: _selectedImages.length,
+                      itemBuilder: (context, index) => ClipRRect(
+                        borderRadius: BorderRadius.circular(12),
+                        child: Image.file(
+                          File(_selectedImages[index].path),
+                          fit: BoxFit.cover,
+                        ),
+                      ),
+                    ),
+                  ),
               ],
             ),
           ),
           if (_isSaving)
             const ColoredBox(
-              color: Color(0x66000000),
-              child: Center(child: CircularProgressIndicator()),
+              color: Colors.black12,
+              child: Center(
+                child: CircularProgressIndicator(color: Color(0xFFFFB7B2)),
+              ),
             ),
         ],
       ),
       bottomNavigationBar: Container(
-        padding: const EdgeInsets.only(bottom: 30, left: 20, right: 20),
-        decoration: const BoxDecoration(color: Color(0xFFF5F5F2)),
+        padding: const EdgeInsets.only(
+          bottom: 35,
+          left: 20,
+          right: 20,
+          top: 10,
+        ),
         child: Row(
           children: [
             IconButton(
@@ -395,25 +511,19 @@ class _MoodNoteScreenState extends State<MoodNoteScreen> {
                 _currentTextAlign == TextAlign.left
                     ? Icons.format_align_left
                     : _currentTextAlign == TextAlign.center
-                        ? Icons.format_align_center
-                        : Icons.format_align_right,
+                    ? Icons.format_align_center
+                    : Icons.format_align_right,
                 color: Colors.black87,
               ),
-              onPressed: _isSaving
-                  ? null
-                  : () {
-                      setState(() {
-                        if (_currentTextAlign == TextAlign.left) {
-                          _currentTextAlign = TextAlign.center;
-                        } else if (_currentTextAlign == TextAlign.center) {
-                          _currentTextAlign = TextAlign.right;
-                        } else {
-                          _currentTextAlign = TextAlign.left;
-                        }
-                      });
-                    },
+              onPressed: () => setState(() {
+                if (_currentTextAlign == TextAlign.left)
+                  _currentTextAlign = TextAlign.center;
+                else if (_currentTextAlign == TextAlign.center)
+                  _currentTextAlign = TextAlign.right;
+                else
+                  _currentTextAlign = TextAlign.left;
+              }),
             ),
-            const Spacer(),
           ],
         ),
       ),
