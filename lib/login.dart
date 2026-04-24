@@ -37,7 +37,8 @@ class _LoginScreenState extends State<LoginScreen> {
         } catch (createError) {
           _showMessage('Could not create account: $createError');
         }
-      } else {
+      } 
+      else {
         _showMessage(e.message ?? 'Login failed');
       }
     } finally {
@@ -51,7 +52,7 @@ class _LoginScreenState extends State<LoginScreen> {
       final googleSignIn = GoogleSignIn();
       await googleSignIn.signOut(); // ล้าง session เก่า
       final googleUser = await googleSignIn.signIn();
-      
+
       if (googleUser == null) {
         setState(() => _isLoading = false);
         return;
@@ -74,7 +75,9 @@ class _LoginScreenState extends State<LoginScreen> {
 
   void _showMessage(String message) {
     if (!mounted) return;
-    ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text(message)));
+    ScaffoldMessenger.of(
+      context,
+    ).showSnackBar(SnackBar(content: Text(message)));
   }
 
   void _showEmailSignIn(BuildContext context) {
@@ -91,14 +94,25 @@ class _LoginScreenState extends State<LoginScreen> {
       builder: (context) => Padding(
         padding: EdgeInsets.only(
           bottom: MediaQuery.of(context).viewInsets.bottom + 30,
-          left: 30, right: 30, top: 30,
+          left: 30,
+          right: 30,
+          top: 30,
         ),
         child: Column(
           mainAxisSize: MainAxisSize.min,
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            Text('Welcome back!', style: GoogleFonts.itim(fontSize: 28, fontWeight: FontWeight.bold)),
-            Text('Enter email to continue with Vibie.', style: GoogleFonts.itim(color: Colors.black45)),
+            Text(
+              'Welcome back!',
+              style: GoogleFonts.itim(
+                fontSize: 28,
+                fontWeight: FontWeight.bold,
+              ),
+            ),
+            Text(
+              'Enter email to continue with Vibie.',
+              style: GoogleFonts.itim(color: Colors.black45),
+            ),
             const SizedBox(height: 25),
             TextField(
               controller: emailController,
@@ -107,7 +121,10 @@ class _LoginScreenState extends State<LoginScreen> {
                 prefixIcon: const Icon(Icons.alternate_email),
                 filled: true,
                 fillColor: Colors.black.withOpacity(0.04),
-                border: OutlineInputBorder(borderRadius: BorderRadius.circular(18), borderSide: BorderSide.none),
+                border: OutlineInputBorder(
+                  borderRadius: BorderRadius.circular(18),
+                  borderSide: BorderSide.none,
+                ),
               ),
             ),
             const SizedBox(height: 12),
@@ -119,16 +136,25 @@ class _LoginScreenState extends State<LoginScreen> {
                 prefixIcon: const Icon(Icons.lock_outline),
                 filled: true,
                 fillColor: Colors.black.withOpacity(0.04),
-                border: OutlineInputBorder(borderRadius: BorderRadius.circular(18), borderSide: BorderSide.none),
+                border: OutlineInputBorder(
+                  borderRadius: BorderRadius.circular(18),
+                  borderSide: BorderSide.none,
+                ),
               ),
             ),
             const SizedBox(height: 25),
             _buildLoginButton(
               onPressed: () {
                 Navigator.pop(context);
-                _continueWithEmail(emailController.text, passwordController.text);
+                _continueWithEmail(
+                  emailController.text,
+                  passwordController.text,
+                );
               },
-              iconWidget: const Icon(Icons.arrow_forward_rounded, color: Colors.black87),
+              iconWidget: const Icon(
+                Icons.arrow_forward_rounded,
+                color: Colors.black87,
+              ),
               label: 'Continue',
               color: const Color(0xFFFFB7B2),
             ),
@@ -146,10 +172,7 @@ class _LoginScreenState extends State<LoginScreen> {
           Positioned.fill(
             child: Opacity(
               opacity: 0.5,
-              child: Image.asset(
-                'assets/images/home.png',
-              fit: BoxFit.cover,
-              ),
+              child: Image.asset('assets/images/home.png', fit: BoxFit.cover),
             ),
           ),
 
@@ -172,20 +195,32 @@ class _LoginScreenState extends State<LoginScreen> {
                   Text(
                     'Your little space for big feelings.',
                     textAlign: TextAlign.center,
-                    style: GoogleFonts.itim(fontSize: 18, color: Colors.black54),
+                    style: GoogleFonts.itim(
+                      fontSize: 18,
+                      color: Colors.black54,
+                    ),
                   ),
                   const Spacer(flex: 3),
 
                   _buildLoginButton(
-                    onPressed: _isLoading ? null : () => _showEmailSignIn(context),
-                    iconWidget: const Icon(Icons.mail_outline_rounded, color: Colors.black87),
+                    onPressed: _isLoading
+                        ? null
+                        : () => _showEmailSignIn(context),
+                    iconWidget: const Icon(
+                      Icons.mail_outline_rounded,
+                      color: Colors.black87,
+                    ),
                     label: 'Continue with Email',
                     color: const Color(0xFFFFB7B2),
                   ),
                   const SizedBox(height: 15),
                   _buildLoginButton(
                     onPressed: _isLoading ? null : _continueWithGoogle,
-                    iconWidget: Image.asset('assets/images/google.png', width: 22, height: 22),
+                    iconWidget: Image.asset(
+                      'assets/images/google.png',
+                      width: 22,
+                      height: 22,
+                    ),
                     label: 'Continue with Google',
                     color: Colors.white,
                     isBordered: true,
@@ -199,7 +234,9 @@ class _LoginScreenState extends State<LoginScreen> {
           if (_isLoading)
             Container(
               color: Colors.black26,
-              child: const Center(child: CircularProgressIndicator(color: Color(0xFFFFB7B2))),
+              child: const Center(
+                child: CircularProgressIndicator(color: Color(0xFFFFB7B2)),
+              ),
             ),
         ],
       ),
@@ -224,7 +261,9 @@ class _LoginScreenState extends State<LoginScreen> {
           elevation: 0,
           shape: RoundedRectangleBorder(
             borderRadius: BorderRadius.circular(20),
-            side: isBordered ? const BorderSide(color: Colors.black12) : BorderSide.none,
+            side: isBordered
+                ? const BorderSide(color: Colors.black12)
+                : BorderSide.none,
           ),
         ),
         child: Row(
@@ -232,7 +271,13 @@ class _LoginScreenState extends State<LoginScreen> {
           children: [
             iconWidget,
             const SizedBox(width: 12),
-            Text(label, style: GoogleFonts.itim(fontSize: 18, fontWeight: FontWeight.bold)),
+            Text(
+              label,
+              style: GoogleFonts.itim(
+                fontSize: 18,
+                fontWeight: FontWeight.bold,
+              ),
+            ),
           ],
         ),
       ),

@@ -22,7 +22,11 @@ class ProfileScreen extends StatelessWidget {
         backgroundColor: Colors.transparent,
         elevation: 0,
         leading: IconButton(
-          icon: const Icon(Icons.arrow_back_ios_new, color: Colors.black87, size: 20),
+          icon: const Icon(
+            Icons.arrow_back_ios_new,
+            color: Colors.black87,
+            size: 20,
+          ),
           onPressed: () => Navigator.pop(context),
         ),
         title: Text(
@@ -63,8 +67,10 @@ class ProfileScreen extends StatelessWidget {
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
                     Text(
-                      user?.displayName ?? (user?.email != null ? user!.email!.split('@')[0] 
-                      : 'Vibie User'),
+                      user?.displayName ??
+                          (user?.email != null
+                              ? user!.email!.split('@')[0]
+                              : 'Vibie User'),
                       style: GoogleFonts.itim(
                         fontSize: 24,
                         fontWeight: FontWeight.bold,
@@ -75,9 +81,9 @@ class ProfileScreen extends StatelessWidget {
                       user?.email ?? 'No email found',
                       style: GoogleFonts.itim(
                         fontSize: 14,
-                        color: Colors.black38
+                        color: Colors.black38,
                       ),
-                    )
+                    ),
                   ],
                 ),
               ],
@@ -85,20 +91,20 @@ class ProfileScreen extends StatelessWidget {
             const SizedBox(height: 40),
             const Divider(color: Colors.black12),
             const SizedBox(height: 20),
-            // ส่วนสถานะ Google Login & Logout
+
             Row(
               mainAxisAlignment: MainAxisAlignment.spaceBetween,
               children: [
                 Row(
                   children: [
-                    Image.asset(
-                      'assets/images/google.png',
-                      width: 20,
-                    ),
+                    Image.asset('assets/images/google.png', width: 20),
                     const SizedBox(width: 12),
                     Text(
                       'Logged in with Google',
-                      style: GoogleFonts.itim(fontSize: 16, color: Colors.black54),
+                      style: GoogleFonts.itim(
+                        fontSize: 16,
+                        color: Colors.black54,
+                      ),
                     ),
                   ],
                 ),
@@ -107,11 +113,16 @@ class ProfileScreen extends StatelessWidget {
                   style: TextButton.styleFrom(
                     backgroundColor: Colors.black.withOpacity(0.05),
                     padding: const EdgeInsets.symmetric(horizontal: 15),
-                    shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
+                    shape: RoundedRectangleBorder(
+                      borderRadius: BorderRadius.circular(8),
+                    ),
                   ),
                   child: Text(
                     'Log out',
-                    style: GoogleFonts.itim(color: Colors.black87, fontWeight: FontWeight.bold),
+                    style: GoogleFonts.itim(
+                      color: Colors.black87,
+                      fontWeight: FontWeight.bold,
+                    ),
                   ),
                 ),
               ],

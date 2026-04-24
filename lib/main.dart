@@ -6,7 +6,6 @@ import 'package:flutter/material.dart';
 import 'package:google_fonts/google_fonts.dart';
 import 'package:flutter/services.dart';
 import 'package:vibie/profile_screen.dart';
-
 import 'insights_screen.dart';
 import 'login.dart';
 import 'mood_selection.dart';
@@ -187,7 +186,6 @@ class _MainDashboardState extends State<MainDashboard> {
         });
   }
 
-  // --- Picker และ UI ส่วนหัว ---
   void _showYearPicker() {
     int currentYearAD = DateTime.now().year;
     List<int> years = List.generate(
@@ -206,9 +204,7 @@ class _MainDashboardState extends State<MainDashboard> {
               child: CupertinoPicker(
                 backgroundColor: const Color(0xFFF5F5F2),
                 itemExtent: 45,
-                scrollController: FixedExtentScrollController(
-                  initialItem: 50,
-                ),
+                scrollController: FixedExtentScrollController(initialItem: 50),
                 onSelectedItemChanged: (index) {
                   setState(
                     () => _focusedDate = DateTime(
@@ -319,10 +315,7 @@ class _MainDashboardState extends State<MainDashboard> {
             ),
           ),
           CupertinoButton(
-            child: Text(
-              'Done',
-              style: GoogleFonts.itim(color: Colors.black54),
-            ),
+            child: Text('Done', style: GoogleFonts.itim(color: Colors.black54)),
             onPressed: () => Navigator.pop(context),
           ),
         ],
@@ -448,10 +441,8 @@ class _MainDashboardState extends State<MainDashboard> {
                                 mainAxisSpacing: 20,
                                 crossAxisSpacing: 10,
                               ),
-                          itemCount:
-                              daysInMonth + firstDayOffset, // ✨ รวมช่องว่าง
+                          itemCount: daysInMonth + firstDayOffset,
                           itemBuilder: (context, index) {
-                            // ✨ ถ้าเป็นช่องว่างก่อนวันที่ 1
                             if (index < firstDayOffset)
                               return const SizedBox.shrink();
 
@@ -472,18 +463,12 @@ class _MainDashboardState extends State<MainDashboard> {
                                     child: moodPath.isNotEmpty
                                         ? Wrap(
                                             alignment: WrapAlignment.center,
-
                                             spacing: 1,
-
                                             runSpacing: 1,
-
-                                            children: moodPath
-                                                .map(
+                                            children: moodPath.map(
                                                   (p) => Image.asset(
                                                     p,
-
                                                     width: 16,
-
                                                     height: 16,
                                                   ),
                                                 )
@@ -515,7 +500,6 @@ class _MainDashboardState extends State<MainDashboard> {
       ),
       floatingActionButton: FloatingActionButton(
         onPressed: () {
-          // ปุ่มบวกจะบันทึกของ "วันนี้" ตามปกติ
           Navigator.push(
             context,
             MaterialPageRoute(

@@ -43,11 +43,9 @@ class _MoodNoteScreenState extends State<MoodNoteScreen> {
   final ImagePicker _picker = ImagePicker();
   List<XFile> _selectedImages = [];
 
-  // ✨ เพิ่มตัวแปรสำหรับจัดการการเปลี่ยนอารมณ์แบบ Real-time
   late List<String> _currentPaths;
   late String _currentLabel;
 
-  // ✨ รายการอารมณ์ทั้งหมดในแอป Vibie
   final List<Map<String, String>> _allMoods = [
     {'img': 'assets/images/mood1.png', 'label': 'Crying'},
     {'img': 'assets/images/mood2.png', 'label': 'Happy'},
@@ -65,7 +63,6 @@ class _MoodNoteScreenState extends State<MoodNoteScreen> {
   @override
   void initState() {
     super.initState();
-    // ✨ กำหนดค่าเริ่มต้นจากที่รับมาจากหน้าก่อน หรือหน้าปฏิทิน
     _currentPaths = List<String>.from(widget.moodImagePaths);
     _currentLabel = widget.moodLabel;
 
@@ -126,7 +123,6 @@ class _MoodNoteScreenState extends State<MoodNoteScreen> {
     } else if (status.isPermanentlyDenied) {
       await openAppSettings();
     } else {
-      // ถ้าแค่ปฏิเสธเฉยๆ ก็บอกน้อง Vibie นิดนึง
       _showMessage('Vibie เข้าถึงรูปภาพไม่ได้ค่ะ');
     }
   }
@@ -141,10 +137,8 @@ class _MoodNoteScreenState extends State<MoodNoteScreen> {
           .collection('users')
           .doc(user.uid)
           .collection('moods');
-      // ✨ กำหนดวันที่บันทึก: ถ้าส่ง selectedDate มาให้ใช้อันนั้น ถ้าไม่มีให้ใช้ "วันนี้"
       final DateTime saveDate = widget.selectedDate ?? DateTime.now();
 
-      // ✨ บังคับให้เป็นเวลา 00:00:00 เพื่อความแม่นยำของปฏิทิน
       final DateTime midnightDate = DateTime(
         saveDate.year,
         saveDate.month,
@@ -161,17 +155,11 @@ class _MoodNoteScreenState extends State<MoodNoteScreen> {
         'updatedAt': FieldValue.serverTimestamp(),
         'moodLabel': _currentLabel.toString(),
         'moodImagePaths': _currentPaths.map((e) => e.toString()).toList(),
-        'entryDate': Timestamp.fromDate(
-          midnightDate,
-        ), // ✨ ใช้ค่าวันที่ที่เลือกมา
-        'date': dateStr, // ✨ ใช้ค่าวันที่ที่เลือกมา
+        'entryDate': Timestamp.fromDate(midnightDate),
+        'date': dateStr,
       };
 
-      // ✨ 2. เรื่องรูปภาพที่เลือกจากเครื่อง (ถ้ามี)
-      // ถ้า Masinya ยังไม่ได้ทำระบบ Upload ขึ้น Storage ให้ข้ามตรงนี้ไปก่อน
-      // แต่ถ้ามีข้อมูลใน _selectedImages เราจะยังไม่ส่งมันลง Firestore ตรงๆ
       List<String> photoUrls = [];
-      // (ที่นี่ควรมี Logic การ Upload ไฟล์รูปขึ้น Firebase Storage แล้วเอา URL กลับมาเก็บ)
       data['photoUrls'] = photoUrls;
 
       if (widget.docId != null) {
@@ -369,8 +357,25 @@ class _MoodNoteScreenState extends State<MoodNoteScreen> {
                         Column(
                           crossAxisAlignment: CrossAxisAlignment.start,
                           children: [
-                            Text('${displayDate.day}', style: GoogleFonts.itim(fontSize: 45, fontWeight: FontWeight.bold, decoration: TextDecoration.underline, decorationColor: const Color(0xFFFFB7B2).withOpacity(0.5), decorationThickness: 4)),
-                            Text(weekDays[displayDate.weekday - 1], style: GoogleFonts.itim(fontSize: 18, color: Colors.black45)),
+                            Text(
+                              '${displayDate.day}',
+                              style: GoogleFonts.itim(
+                                fontSize: 45,
+                                fontWeight: FontWeight.bold,
+                                decoration: TextDecoration.underline,
+                                decorationColor: const Color(
+                                  0xFFFFB7B2,
+                                ).withOpacity(0.5),
+                                decorationThickness: 4,
+                              ),
+                            ),
+                            Text(
+                              weekDays[displayDate.weekday - 1],
+                              style: GoogleFonts.itim(
+                                fontSize: 18,
+                                color: Colors.black45,
+                              ),
+                            ),
                           ],
                         ),
                       ],
@@ -378,8 +383,7 @@ class _MoodNoteScreenState extends State<MoodNoteScreen> {
                   ],
                 ),
                 const SizedBox(height: 30),
-                // ✨ แก้ไขส่วนแสดงไอคอนให้ "กดวนเปลี่ยนอารมณ์" ได้
-                // ✨ แก้ไขส่วนแสดงไอคอนให้เปลี่ยนอารมณ์ได้ "ทุกตัว" ที่เลือกมา
+
                 Wrap(
                   spacing: 12,
                   runSpacing: 12,
@@ -389,18 +393,14 @@ class _MoodNoteScreenState extends State<MoodNoteScreen> {
                     return GestureDetector(
                       onTap: () {
                         setState(() {
-                          // ค้นหาลำดับปัจจุบันใน List อารมณ์ทั้งหมด
                           int allMoodsIndex = _allMoods.indexWhere(
                             (m) => m['img'] == path,
                           );
-                          // วนไปลำดับถัดไป
                           int nextIndex =
                               (allMoodsIndex + 1) % _allMoods.length;
 
-                          // ✨ เปลี่ยนเฉพาะตัวที่เราจิ้ม (ใช้ index แทนการ fix ที่ [0])
                           _currentPaths[index] = _allMoods[nextIndex]['img']!;
 
-                          // อัปเดต Label (ถ้ามีอารมณ์เดียวให้โชว์ชื่ออารมณ์ ถ้าหลายอันให้โชว์ Mixed)
                           if (_currentPaths.length == 1) {
                             _currentLabel = _allMoods[nextIndex]['label']!;
                           } else {
@@ -412,7 +412,7 @@ class _MoodNoteScreenState extends State<MoodNoteScreen> {
                         duration: const Duration(milliseconds: 300),
                         child: Image.asset(
                           path,
-                          key: ValueKey(path), // สำคัญเพื่อให้ลื่นไหล
+                          key: ValueKey(path),
                           width: 90,
                           height: 90,
                           fit: BoxFit.contain,
@@ -422,7 +422,6 @@ class _MoodNoteScreenState extends State<MoodNoteScreen> {
                   }),
                 ),
                 const SizedBox(height: 15),
-                // ✨ แสดงชื่ออารมณ์ที่เปลี่ยนตามการกด
                 Container(
                   padding: const EdgeInsets.symmetric(
                     horizontal: 16,
@@ -452,7 +451,6 @@ class _MoodNoteScreenState extends State<MoodNoteScreen> {
                     border: InputBorder.none,
                   ),
                 ),
-                // แสดงรูปที่เลือกจากเครื่อง (ถ้ามี)
                 if (_selectedImages.isNotEmpty)
                   Padding(
                     padding: const EdgeInsets.only(top: 20, bottom: 40),

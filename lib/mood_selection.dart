@@ -3,13 +3,9 @@ import 'package:google_fonts/google_fonts.dart';
 import 'mood_note.dart';
 
 class MoodSelectionScreen extends StatefulWidget {
-  // ✨ 1. เพิ่มตัวแปรรับวันที่มาจากหน้าปฏิทิน
   final DateTime? selectedDate;
 
-  const MoodSelectionScreen({
-    super.key,
-    this.selectedDate, // ✨ 2. รับค่าผ่าน Constructor
-  });
+  const MoodSelectionScreen({super.key, this.selectedDate});
 
   @override
   State<MoodSelectionScreen> createState() => _MoodSelectionScreenState();
@@ -75,7 +71,7 @@ class _MoodSelectionScreenState extends State<MoodSelectionScreen> {
                 style: TextStyle(
                   fontWeight: FontWeight.bold,
                   fontSize: 18,
-                  color: Colors.black
+                  color: Colors.black,
                 ),
               ),
             ),
