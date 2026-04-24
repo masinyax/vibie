@@ -4,6 +4,7 @@ import 'package:firebase_core/firebase_core.dart';
 import 'package:flutter/cupertino.dart';
 import 'package:flutter/material.dart';
 import 'package:google_fonts/google_fonts.dart';
+import 'package:flutter/services.dart';
 import 'package:vibie/profile_screen.dart';
 
 import 'insights_screen.dart';
@@ -16,6 +17,7 @@ Future<void> main() async {
   if (Firebase.apps.isEmpty) {
     await Firebase.initializeApp();
   }
+  SystemChrome.setEnabledSystemUIMode(SystemUiMode.immersiveSticky);
   runApp(const VibieApp());
 }
 
