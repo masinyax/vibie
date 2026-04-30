@@ -17,7 +17,7 @@ class ProfileScreen extends StatelessWidget {
     final user = FirebaseAuth.instance.currentUser;
 
     return Scaffold(
-      backgroundColor: const Color(0xFFF5F5F2), // สีขาวนวล Warm White
+      backgroundColor: const Color(0xFFF5F5F2),
       appBar: AppBar(
         backgroundColor: Colors.transparent,
         elevation: 0,

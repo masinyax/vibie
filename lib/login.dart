@@ -50,7 +50,7 @@ class _LoginScreenState extends State<LoginScreen> {
     setState(() => _isLoading = true);
     try {
       final googleSignIn = GoogleSignIn();
-      await googleSignIn.signOut(); // ล้าง session เก่า
+      await googleSignIn.signOut();
       final googleUser = await googleSignIn.signIn();
 
       if (googleUser == null) {
